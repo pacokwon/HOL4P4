@@ -13,7 +13,7 @@ if [[ ! -d "$TESTDIR" ]]; then
 fi
 
 ./petr4_json_export.sh "$TESTDIR" p4include/
-./petr4_to_hol4p4.sh "$TESTDIR" 1
+./petr4_to_hol4p4_dir.sh "$TESTDIR" 1
 cp validation_tests/Holmakefile "$TESTDIR"
 cd "$TESTDIR"
 Holmake -k
