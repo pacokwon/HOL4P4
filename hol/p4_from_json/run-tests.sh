@@ -12,8 +12,11 @@ if [[ ! -d "$TESTDIR" ]]; then
     exit 1
 fi
 
+cp validation_tests/Holmakefile "$TESTDIR"
+cd "$TESTDIR"
+Holmake
+cd ..
 ./petr4_json_export.sh "$TESTDIR" p4include/
 ./petr4_to_hol4p4_dir.sh "$TESTDIR" 1
-cp validation_tests/Holmakefile "$TESTDIR"
 cd "$TESTDIR"
 Holmake -k
