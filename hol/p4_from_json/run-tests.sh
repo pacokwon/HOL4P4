@@ -12,6 +12,7 @@ if [[ ! -d "$TESTDIR" ]]; then
     exit 1
 fi
 
+eval $(opam env)
 cp validation_tests/Holmakefile "$TESTDIR"
 cd "$TESTDIR"
 Holmake
