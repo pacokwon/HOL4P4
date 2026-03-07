@@ -18,10 +18,7 @@ WORKDIR /HOL4P4/hol/p4_from_json
 COPY p4include/ /HOL4P4/hol/p4_from_json/p4include/
 
 RUN mv /HOL4P4/testdata/ebpf-tests.tar.gz /HOL4P4/testdata/v1model-tests.tar.gz . && \
-    tar xvzf ebpf-tests.tar.gz && \
-    tar xvzf v1model-tests.tar.gz
-
-# Test compilation
-#RUN export PATH=$PATH:/HOL4P4/HOL/bin && opam exec -- make hol
+    tar xvzf ebpf-tests.tar.gz && rm ebpf-tests.tar.gz && \
+    tar xvzf v1model-tests.tar.gz && rm v1model-tests.tar.gz
 
 ENTRYPOINT ["/bin/bash", "--login"]
