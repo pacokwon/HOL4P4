@@ -6,12 +6,14 @@ if [[ -z "$1" ]]; then
 fi
 
 TESTDIR="$1"
+TESTDIR="${TESTDIR%/}/"
 
 if [[ ! -d "$TESTDIR" ]]; then
     echo "Error: $TESTDIR is not a directory"
     exit 1
 fi
 
+opam switch default
 eval $(opam env)
 cp validation_tests/Holmakefile "$TESTDIR"
 cd "$TESTDIR"
@@ -23,7 +25,7 @@ mv petr4_to_hol4p4_stf.log "$TESTDIR"
 cd "$TESTDIR"
 Holmake -k
 
-PASS=$(ls "$TESTDIR"/.hol/objs/*.uo | wc -l)
+PASS=$(ls "${TESTDIR%/}"/.hol/objs/*.uo | wc -l)
 JSON_SUCCESS=$(find "$TESTDIR" -maxdepth 1 -name '*.json' -size +0c | wc -l)
 TOTAL=$(ls "$TESTDIR"/*.p4 | wc -l)
 
