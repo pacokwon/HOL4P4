@@ -2,4 +2,5 @@
 
 sudo apt-get install -y opam
 opam init --auto-setup --yes --disable-sandboxing
-eval $(opam env --switch=default)
+opam switch create hol4p4 4.13.1
+eval $(opam env --switch=hol4p4)
