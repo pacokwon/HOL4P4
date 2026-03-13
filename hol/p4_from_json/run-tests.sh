@@ -33,6 +33,11 @@ PASS=$(ls "${TESTDIR%/}"/.hol/objs/*.uo | wc -l)
 JSON_SUCCESS=$(find "$TESTDIR" -maxdepth 1 -name '*.json' -size +0c | wc -l)
 TOTAL=$(ls "$TESTDIR"/*.p4 | wc -l)
 
+LOG="${TESTDIR%/}.log"
+./collect-stat.sh "$TESTDIR" > "$LOG"
+
+echo "============================================="
 echo "Total Tests: $TOTAL"
 echo "Successful JSON outputs: $JSON_SUCCESS/$TOTAL"
 echo "Pass: $PASS/$TOTAL"
+echo "Individual test results can be found in $LOG"
