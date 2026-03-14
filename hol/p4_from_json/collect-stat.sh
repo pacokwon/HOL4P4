@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-# Define the target directory variable
 TARGET_DIR="$1"
 
 if [[ -z "$TARGET_DIR" ]]; then
     echo "Error: No directory provided."
-    echo "Usage: $0 <directory_name> (e.g., $0 v1model)"
+    echo "Usage: $0 <directory_name>"
     exit 1
 fi
 
@@ -14,25 +14,25 @@ if [[ ! -d "$TARGET_DIR" ]]; then
     exit 1
 fi
 
-# Derived paths based on HOL4's standard directory structure
 OBJ_DIR="$TARGET_DIR/.hol/objs"
+EXCLUDED_LIST="$TARGET_DIR/.excluded_tests"
 
-# echo "Checking for compiled .uo files in $OBJ_DIR..."
-# echo "-------------------------------------------"
-
-# Loop through all .p4 files in the target directory
 for p4_file in "$TARGET_DIR"/*.p4; do
-    # Get the base filename (e.g., "arith-bmv2" from "v1model/arith-bmv2.p4")
-    # We also need to handle the fact that HOL4 usually names theories
-    # by replacing hyphens with underscores.
+    [[ -e "$p4_file" ]] || continue
+
     base_name=$(basename "$p4_file" .p4)
     theory_name=$(echo "$base_name" | tr '-' '_')
 
-    # Check for the existence of the .uo file
-    # Note: HOL4 appends 'Theory' to the generated filename
     if [[ -f "$OBJ_DIR/${theory_name}Theory.uo" ]]; then
         echo "[PASS] $base_name.p4"
     else
         echo "[FAIL] $base_name.p4"
     fi
 done
+
+if [[ -f "$EXCLUDED_LIST" ]]; then
+    while IFS= read -r name || [[ -n "$name" ]]; do
+        [[ -z "$name" ]] && continue
+        echo "[SKIP] $name"
+    done < "$EXCLUDED_LIST"
+fi
