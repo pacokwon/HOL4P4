@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 EXCLUDE_FILES=()
 LOG_FILE=""
