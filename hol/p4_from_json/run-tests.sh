@@ -2,11 +2,13 @@
 set -euo pipefail
 
 EXCLUDE_FILES=()
+LOG_FILE=""
 
-while getopts "e:" opt; do
+while getopts "e:o:" opt; do
   case "$opt" in
     e) EXCLUDE_FILES+=("$OPTARG") ;;
-    *) echo "Usage: $0 [-e exclude_file ...] testdir"; exit 1 ;;
+    o) LOG_FILE="$OPTARG" ;;
+    *) echo "Usage: $0 [-e exclude_file ...] [-o logfile] testdir"; exit 1 ;;
   esac
 done
 
@@ -121,7 +123,7 @@ JSON_SUCCESS=$(find "$TESTDIR" -maxdepth 1 -name '*.json' -size +0c | wc -l)
 SKIPPED=0
 [[ -f "$EXCLUDED_LIST" ]] && SKIPPED=$(wc -l < "$EXCLUDED_LIST")
 
-LOG="${TESTDIR%/}.log"
+LOG="${LOG_FILE:-${TESTDIR%/}.log}"
 
 ./collect-stat.sh "$TESTDIR" > "$LOG"
 
@@ -131,5 +133,3 @@ echo "Excluded Tests: $SKIPPED"
 echo "Successful JSON outputs: $JSON_SUCCESS/$TOTAL"
 echo "Pass: $PASS/$TOTAL"
 echo "Individual test results can be found in $LOG"
-
-
