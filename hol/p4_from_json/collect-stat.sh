@@ -36,3 +36,4 @@ if [[ -f "$EXCLUDED_LIST" ]]; then
         echo "[SKIP] $name"
     done < "$EXCLUDED_LIST"
 fi
+
