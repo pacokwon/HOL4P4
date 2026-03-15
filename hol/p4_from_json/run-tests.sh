@@ -2,16 +2,24 @@
 
 EXCLUDE_FILES=()
 LOG_FILE=""
+JOBS=""
 
-while getopts "e:o:" opt; do
+while getopts "e:o:j:" opt; do
   case "$opt" in
     e) EXCLUDE_FILES+=("$OPTARG") ;;
     o) LOG_FILE="$OPTARG" ;;
-    *) echo "Usage: $0 [-e exclude_file ...] [-o logfile] testdir"; exit 1 ;;
+    j) JOBS="$OPTARG" ;;
+    *) echo "Usage: $0 [-e exclude_file ...] [-o logfile] [-j jobs] testdir"; exit 1 ;;
   esac
 done
 
 shift $((OPTIND - 1))
+
+# Default only if -j not provided
+if [[ -z "$JOBS" ]]; then
+    n=$(nproc)
+    JOBS=$(( n > 1 ? n - 1 : 1 ))
+fi
 
 if [[ -z "${1:-}" ]]; then
     echo "Error: testdir not provided."
@@ -25,6 +33,19 @@ if [[ ! -d "$TESTDIR" ]]; then
     echo "Error: $TESTDIR is not a directory"
     exit 1
 fi
+
+case "$TESTDIR" in
+    *p4c-v1model*|*p4c-ebpf*)
+        EXCLUDE_MODE="p4c"
+        ;;
+    *p4testgen-v1model*|*p4testgen-ebpf*)
+        EXCLUDE_MODE="p4testgen"
+        ;;
+    *)
+        echo "Error: could not determine exclude mode from TESTDIR: $TESTDIR"
+        exit 1
+        ;;
+esac
 
 TOTAL=$(find "$TESTDIR" -maxdepth 1 -name '*.p4' | wc -l)
 
@@ -42,6 +63,45 @@ restore_excluded() {
 
 trap restore_excluded EXIT
 
+exclude_exact_file() {
+    local filename="$1"
+    local f="$TESTDIR/$filename"
+
+    if [[ -f "$f" ]]; then
+        mv "$f" "$EXCLUDED_DIR/"
+        echo "$filename" >> "$EXCLUDED_LIST"
+    fi
+}
+
+exclude_p4testgen_p4_family() {
+    local stem="$1"
+    local f
+
+    shopt -s nullglob
+    for f in "$TESTDIR/${stem}"__*.p4; do
+        [[ -f "$f" ]] || continue
+        mv "$f" "$EXCLUDED_DIR/"
+        echo "$(basename "$f")" >> "$EXCLUDED_LIST"
+    done
+    shopt -u nullglob
+}
+
+exclude_p4testgen_stf_instance() {
+    local name="$1"
+
+    if [[ "$name" =~ ^(.*)_([0-9]+)\.stf$ ]]; then
+        local base="${BASH_REMATCH[1]}"
+        local n="${BASH_REMATCH[2]}"
+        local target="${base}__${n}.stf"
+        local f="$TESTDIR/$target"
+
+        if [[ -f "$f" ]]; then
+            mv "$f" "$EXCLUDED_DIR/"
+            echo "$target" >> "$EXCLUDED_LIST"
+        fi
+    fi
+}
+
 if [[ ${#EXCLUDE_FILES[@]} -gt 0 ]]; then
     mkdir -p "$EXCLUDED_DIR"
     : > "$EXCLUDED_LIST"
@@ -52,40 +112,37 @@ if [[ ${#EXCLUDE_FILES[@]} -gt 0 ]]; then
             exit 1
         fi
 
-        while IFS= read -r name || [[ -n "$name" ]]; do
-            [[ -z "$name" ]] && continue
+        while IFS= read -r raw || [[ -n "$raw" ]]; do
+            raw="${raw#"${raw%%[![:space:]]*}"}"
+            raw="${raw%"${raw##*[![:space:]]}"}"
+            [[ -z "$raw" ]] && continue
 
-            name=$(basename "$name")
-
-            stem="${name%.p4}"
-            stem="${stem%.stf}"
-            stem="${stem%.json}"
-
-            candidates=("$stem")
-
-            if [[ "$stem" =~ ^(.*)_([0-9]+)$ ]]; then
-                candidates+=("${BASH_REMATCH[1]}__${BASH_REMATCH[2]}")
+	    if [[ "$raw" == *p4_16_errors* ]]; then
+                continue
             fi
 
-            matched=0
+            name=$(basename "$raw")
 
-            for cand in "${candidates[@]}"; do
-                for f in \
-                    "$TESTDIR/$cand.p4" \
-                    "$TESTDIR/$cand.stf" \
-                    "$TESTDIR/$cand.json"
-                do
-                    if [[ -f "$f" ]]; then
-                        mv "$f" "$EXCLUDED_DIR/"
-                        matched=1
-                    fi
-                done
-
-                if [[ $matched -eq 1 ]]; then
-                    echo "$cand.p4" >> "$EXCLUDED_LIST"
-                    break
-                fi
-            done
+            case "$EXCLUDE_MODE" in
+                p4c)
+                    case "$name" in
+                        *.p4|*.stf)
+                            exclude_exact_file "$name"
+                            ;;
+                    esac
+                    ;;
+                p4testgen)
+                    case "$name" in
+                        *.p4)
+                            stem="${name%.p4}"
+                            exclude_p4testgen_p4_family "$stem"
+                            ;;
+                        *.stf)
+                            exclude_p4testgen_stf_instance "$name"
+                            ;;
+                    esac
+                    ;;
+            esac
         done < "$EXCLUDE_FILE"
     done
 
@@ -105,16 +162,16 @@ if [[ -d "$OBJ_DIR" ]] && find "$OBJ_DIR" -maxdepth 1 -name '*.uo' | grep -q .; 
     echo "Skipping first Holmake: existing .uo files found in $OBJ_DIR"
 else
     cd "$TESTDIR"
-    Holmake -k || true
+    Holmake -j $JOBS -k || true
     cd ..
 fi
 
 ./petr4_json_export.sh "$TESTDIR" p4include/
-./petr4_to_hol4p4_dir.sh "$TESTDIR" 1
+./petr4_to_hol4p4_dir.sh "$TESTDIR" $JOBS
 mv petr4_to_hol4p4_stf.log "$TESTDIR"
 
 cd "$TESTDIR"
-Holmake -k || true
+Holmake -j $JOBS -k || true
 cd ..
 
 PASS=$(find "${TESTDIR%/}/.hol/objs" -maxdepth 1 -name '*.uo' 2>/dev/null | wc -l)
