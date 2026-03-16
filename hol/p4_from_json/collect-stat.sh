@@ -20,8 +20,15 @@ EXCLUDED_LIST="$TARGET_DIR/.excluded_tests"
 for p4_file in "$TARGET_DIR"/*.p4; do
     [[ -e "$p4_file" ]] || continue
 
-    base_name=$(basename "$p4_file" .p4)
-    theory_name=$(echo "$base_name" | tr '-' '_')
+    base_name=${p4_file##*/}
+    base_name=${base_name%.p4}
+
+    stf_file="$TARGET_DIR/$base_name.stf"
+
+    # only process if pair exists
+    [[ -f "$stf_file" ]] || continue
+
+    theory_name=${base_name//-/_}
 
     if [[ -f "$OBJ_DIR/${theory_name}Theory.uo" ]]; then
         echo "[PASS] $base_name.p4"
