@@ -17,6 +17,11 @@ if [[ -z "$JOBS" ]]; then
     JOBS=$(( n > 1 ? n - 1 : 1 ))
 fi
 
+if [ -z "$1" ]; then
+    echo "TESTDIR is empty"
+    exit 1
+fi
+
 TESTDIR="$1"
 TESTDIR="${TESTDIR%/}/"
 
